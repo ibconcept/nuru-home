@@ -25,10 +25,24 @@ service cloud.firestore {
              (data.get('subject', '') == '' || (data.subject is string && data.subject.size() <= 200));
     }
 
+    function isValidOrder(data) {
+      return data.keys().hasAll(['customerName', 'school', 'items', 'createdAt']) &&
+             data.customerName is string && data.customerName.size() <= 200 &&
+             data.school is string && data.school.size() <= 300 &&
+             data.items is list && data.items.size() > 0 &&
+             data.createdAt == request.time;
+    }
+
     match /inquiries/{inquiryId} {
       allow create: if isValidInquiry(request.resource.data);
       allow list, get, delete: if isAdmin();
-      allow update: if false; // Inquiries are immutable
+      allow update: if false;
+    }
+
+    match /orders/{orderId} {
+      allow create: if isValidOrder(request.resource.data);
+      allow list, get, delete: if isAdmin();
+      allow update: if false;
     }
   }
 }

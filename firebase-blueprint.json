@@ -13,12 +13,32 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Time of inquiry" }
       },
       "required": ["name", "message", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Product or service checkout request.",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "school": { "type": "string" },
+        "location": { "type": "string" },
+        "role": { "type": "string" },
+        "contact": { "type": "string" },
+        "items": { "type": "array", "description": "List of selected products/services" },
+        "total": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerName", "school", "items", "createdAt"]
     }
   },
   "firestore": {
     "inquiries/{inquiryId}": {
       "schema": "Inquiry",
       "description": "Collection of visitor inquiries and feedback."
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of checkout orders."
     }
   }
 }
