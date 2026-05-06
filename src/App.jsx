@@ -18,7 +18,8 @@ import {
   Minus,
   MapPin,
   User as UserIcon,
-  MessageSquare
+  MessageSquare,
+  Share2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -47,19 +48,22 @@ const View = {
   CHECKOUT: 'checkout'
 };
 
+const CATEGORIES = ["All", "Branding", "Stationery", "Admin", "Awards"];
+
 const PRODUCTS = [
-  { name: "Learning Tools", image: "https://picsum.photos/seed/tool/400/300", description: "Enhance learning with our tools." },
-  { name: "Awasi Boys School Logo", image: "https://picsum.photos/seed/awasi/400/300", description: "Logo for Awasi Boys School." },
-  { name: "Clock Branding", image: "https://picsum.photos/seed/clock/400/300", description: "Branded school clocks." },
-  { name: "Kairi Secondary School Logo", image: "https://picsum.photos/seed/kairi/400/300", description: "Logo for Kairi Secondary School." },
-  { name: "Poiywek Secondary School Logo", image: "https://picsum.photos/seed/poiywek/400/300", description: "Logo for Poiywek Secondary School." },
-  { name: "Achengo Mixed Secondary School Logo", image: "https://picsum.photos/seed/achengo/400/300", description: "Logo for Achengo Mixed Secondary School." },
-  { name: "Custom Badges", image: "https://picsum.photos/seed/badge/400/300", description: "Custom badges and key holders." },
-  { name: "Medals and Trophies", image: "https://picsum.photos/seed/medal/400/300", description: "Custom medals and trophies." },
-  { name: "Podiums", image: "https://picsum.photos/seed/podiums/400/300", description: "Podiums for school events." },
-  { name: "Labels and Signs", image: "https://picsum.photos/seed/labels/400/300", description: "Various labels and signs for schools." },
-  { name: "Stamp & Company Seal", image: "https://picsum.photos/seed/stamp/400/300", description: "Stamp and company seal." },
-  { name: "Plaques", image: "https://picsum.photos/seed/plaques/400/300", description: "Plaques for recognition." },
+  { name: "Learning Tools", category: "Stationery", price: 1200, image: "https://picsum.photos/seed/tool/400/300", description: "Enhance learning with our tools." },
+  { name: "Awasi Boys School Logo", category: "Branding", price: 2500, image: "https://picsum.photos/seed/awasi/400/300", description: "Professional school identity design." },
+  { name: "Clock Branding", category: "Branding", price: 1500, image: "https://picsum.photos/seed/clock/400/300", description: "Custom wall clocks with school logo." },
+  { name: "Kairi Secondary Logo", category: "Branding", price: 2500, image: "https://picsum.photos/seed/kairi/400/300", description: "Logo for Kairi Secondary School." },
+  { name: "Poiywek School Logo", category: "Branding", price: 2500, image: "https://picsum.photos/seed/poiywek/400/300", description: "Logo for Poiywek Secondary School." },
+  { name: "Achengo Mixed Logo", category: "Branding", price: 2500, image: "https://picsum.photos/seed/achengo/400/300", description: "Logo for Achengo Mixed Secondary." },
+  { name: "Custom Badges", category: "Stationery", price: 500, image: "https://picsum.photos/seed/badge/400/300", description: "Premium school badges and key holders." },
+  { name: "Medals and Trophies", category: "Awards", price: 1800, image: "https://picsum.photos/seed/medal/400/300", description: "Quality recognition materials." },
+  { name: "Podiums", category: "Admin", price: 15000, image: "https://picsum.photos/seed/podiums/400/300", description: "Sturdy wood and acrylic podiums." },
+  { name: "Labels and Signs", category: "Stationery", price: 300, image: "https://picsum.photos/seed/labels/400/300", description: "Directional and room identifiers." },
+  { name: "Stamp & Company Seal", category: "Admin", price: 3500, image: "https://picsum.photos/seed/stamp/400/300", description: "Fast-dry school and company stamps." },
+  { name: "Plaques", category: "Awards", price: 4500, image: "https://picsum.photos/seed/plaques/400/300", description: "Elegant retirement and merit plaques." },
+  { name: "School Registers", category: "Admin", price: 800, image: "https://picsum.photos/seed/register/400/300", description: "Standard attendance and classwork books." },
 ];
 
 const SERVICES = [
@@ -71,6 +75,7 @@ const SERVICES = [
 
 export default function App() {
   const [currentView, setCurrentView] = useState(View.HOME);
+  const [activeCategory, setActiveCategory] = useState("All");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [inquiries, setInquiries] = useState([]);
@@ -117,6 +122,20 @@ export default function App() {
 
   const removeFromCart = (name) => {
     setCart(prev => prev.filter(item => item.name !== name));
+  };
+
+  const handleShare = async (product) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Nuru: ${product.name}`,
+          text: `Check out ${product.name} from Nuru Stationeries and Services. Price: KES ${product.price}`,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.error('Share failed:', err);
+      }
+    }
   };
 
   // SEO: JSON-LD injection
@@ -184,6 +203,14 @@ export default function App() {
     if (id) await deleteDoc(doc(db, 'orders', id));
   };
 
+  const deleteInquiry = async (id) => {
+    if (id) await deleteDoc(doc(db, 'inquiries', id));
+  };
+
+  const filteredProducts = activeCategory === "All" 
+    ? PRODUCTS 
+    : PRODUCTS.filter(p => p.category === activeCategory);
+
   const NavLink = ({ view, label, icon: Icon }) => (
     <button 
       onClick={() => { setCurrentView(view); setIsMenuOpen(false); }}
@@ -214,7 +241,7 @@ export default function App() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center space-x-2">
             <NavLink view={View.HOME} label="Home" icon={HomeIcon} />
-            <NavLink view={View.PRODUCTS} label="Products" icon={ShoppingBag} />
+            <NavLink view={View.PRODUCTS} label="Shop" icon={ShoppingBag} />
             <NavLink view={View.SERVICES} label="Services" icon={Briefcase} />
             <NavLink view={View.CONTACT} label="Contact" icon={Mail} />
             <button 
@@ -224,9 +251,9 @@ export default function App() {
               }`}
             >
               <ShoppingCart size={18} />
-              <span className="font-medium">Checkout</span>
+              <span className="font-medium">Cart</span>
               {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm font-bold">
                   {cart.length}
                 </span>
               )}
@@ -252,7 +279,7 @@ export default function App() {
               className="md:hidden bg-white border-b border-slate-200 absolute w-full px-4 py-4 space-y-2 shadow-xl"
             >
               <NavLink view={View.HOME} label="Home" icon={HomeIcon} />
-              <NavLink view={View.PRODUCTS} label="Products" icon={ShoppingBag} />
+              <NavLink view={View.PRODUCTS} label="Shop" icon={ShoppingBag} />
               <NavLink view={View.SERVICES} label="Services" icon={Briefcase} />
               <NavLink view={View.CONTACT} label="Contact" icon={Mail} />
               <button 
@@ -263,7 +290,7 @@ export default function App() {
               >
                 <div className="flex items-center space-x-2">
                   <ShoppingCart size={18} />
-                  <span className="font-medium">Checkout</span>
+                  <span className="font-medium">Cart</span>
                 </div>
                 {cart.length > 0 && (
                   <span className={`${currentView === View.CHECKOUT ? 'bg-white text-primary' : 'bg-primary text-white'} text-[10px] font-bold px-2 py-0.5 rounded-full`}>
@@ -292,57 +319,62 @@ export default function App() {
             >
               {/* Hero */}
               <div className="grid lg:grid-cols-2 gap-12 items-center">
-                <div className="space-y-8">
+                <div className="space-y-6">
                   <div className="inline-flex items-center space-x-2 px-3 py-1 bg-seagreen-50 text-seagreen-700 rounded-full text-xs font-bold uppercase tracking-wider border border-seagreen-100">
-                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                    <span>Serving East Africa</span>
+                    <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+                    <span>Kenya's Top School Supplier</span>
                   </div>
-                  <h2 className="text-5xl md:text-7xl font-extrabold leading-[1.1] tracking-tight text-slate-900">
-                    Excellence in <span className="text-primary italic">Stationery</span> & Digital Services.
+                  <h2 className="text-4xl md:text-5xl font-extrabold leading-tight tracking-tight text-slate-900">
+                    Your School's Future <br/>
+                    <span className="text-primary italic">Starts with Better Design.</span>
                   </h2>
-                  <p className="text-lg text-slate-600 max-w-lg leading-relaxed">
-                    Nuru simplifies school management and learning with custom stationeries, CBC materials, and professional digital branding solutions.
+                  <p className="text-base text-slate-500 max-w-lg leading-relaxed">
+                    Custom stationery solutions and digital branding for progressive educational institutions across East Africa.
                   </p>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-4 pt-4">
                     <button 
                       onClick={() => setCurrentView(View.PRODUCTS)}
-                      className="px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-seagreen-200 hover:bg-primary-dark hover:shadow-xl transition-all"
+                      className="px-6 py-3.5 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-seagreen-200 hover:bg-primary-dark transition-all"
                     >
-                      Browse Products
+                      Shop Catalog
                     </button>
                     <a 
                       href="https://wa.me/254719301330"
                       target="_blank"
                       rel="noreferrer"
-                      className="px-8 py-4 bg-white border border-slate-200 text-slate-800 font-bold rounded-2xl hover:bg-slate-50 transition-all flex items-center space-x-2"
+                      className="px-6 py-3.5 bg-white border border-slate-200 text-slate-800 font-bold rounded-2xl hover:bg-slate-50 transition-all flex items-center space-x-2"
                     >
                       <Phone size={18} />
-                      <span>WhatsApp Us</span>
+                      <span>Request Quote</span>
                     </a>
                   </div>
                 </div>
                 <div className="relative">
-                  <div className="absolute -inset-4 bg-seagreen-100 rounded-[3rem] blur-2xl opacity-50 -z-10"></div>
+                  <div className="absolute -inset-6 bg-seagreen-100 rounded-[3rem] blur-3xl opacity-40 -z-10"></div>
                   <img 
-                    src="https://picsum.photos/seed/nairobi/800/600" 
-                    alt="Nuru Stationeries" 
-                    className="w-full h-[400px] object-cover rounded-[2.5rem] shadow-2xl border-4 border-white"
+                    src="https://picsum.photos/seed/k-12/800/600" 
+                    alt="Education Support" 
+                    className="w-full h-[380px] object-cover rounded-[2.5rem] shadow-2xl border-2 border-white ring-8 ring-slate-100/50"
                     referrerPolicy="no-referrer"
                   />
                 </div>
               </div>
 
-              {/* Quick Features */}
-              <div className="grid md:grid-cols-3 gap-8">
-                {SERVICES.slice(0, 3).map((s, i) => (
-                  <div key={i} className="p-8 bg-white border border-slate-100 rounded-3xl shadow-sm hover:border-seagreen-200 transition-all group">
-                    <div className="w-12 h-12 bg-seagreen-50 text-primary rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all">
-                      {i === 0 ? <ShoppingBag size={24} /> : i === 1 ? <Briefcase size={24} /> : <Settings size={24} />}
+              {/* Best Sellers Preview */}
+              <div className="space-y-8">
+                <div className="flex items-end justify-between">
+                  <h3 className="text-2xl font-bold text-slate-800">Top Rated Products</h3>
+                  <button onClick={() => setCurrentView(View.PRODUCTS)} className="text-sm font-bold text-primary hover:underline">View All &rarr;</button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {PRODUCTS.slice(0, 4).map((p, i) => (
+                    <div key={i} className="group bg-white p-4 rounded-3xl border border-slate-100 hover:shadow-xl transition-all cursor-pointer" onClick={() => addToCart(p)}>
+                      <img src={p.image} alt={p.name} className="w-full aspect-square object-cover rounded-2xl mb-4 group-hover:scale-105 transition-transform" />
+                      <h4 className="font-bold text-slate-800 text-sm mb-1">{p.name}</h4>
+                      <p className="text-primary font-black text-xs">KES {p.price.toLocaleString()}</p>
                     </div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-2">{s.name}</h3>
-                    <p className="text-slate-500 leading-relaxed">{s.description}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </motion.section>
           )}
@@ -355,36 +387,70 @@ export default function App() {
               exit={{ opacity: 0 }}
               className="space-y-12"
             >
-              <div className="text-center max-w-2xl mx-auto space-y-4">
-                <h2 className="text-4xl font-black text-slate-900 tracking-tight">Our Product Catalog</h2>
-                <p className="text-slate-500">Premium custom branding and stationery solutions tailored for educational institutions.</p>
+              {/* E-commerce Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">Nuru Store</h2>
+                  <p className="text-slate-500 text-sm">Quality school branding & materials delivered.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(cat => (
+                    <button 
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                        activeCategory === cat 
+                        ? 'bg-primary text-white border-primary shadow-md' 
+                        : 'bg-white text-slate-600 border-slate-100 hover:bg-slate-50'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {PRODUCTS.map((p, i) => (
-                  <div key={i} className="bg-white rounded-3xl border border-slate-100 overflow-hidden group hover:shadow-2xl hover:shadow-seagreen-100 transition-all">
-                    <div className="aspect-[4/3] overflow-hidden">
+
+              {/* Product Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                {filteredProducts.map((p, i) => (
+                  <div key={i} className="bg-white rounded-3xl border border-slate-100 overflow-hidden group hover:shadow-2xl hover:shadow-seagreen-100 transition-all flex flex-col">
+                    <div className="aspect-[4/3] overflow-hidden relative">
                       <img 
                         src={p.image} 
                         alt={p.name} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         referrerPolicy="no-referrer"
                       />
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleShare(p); }}
+                        className="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-md rounded-full text-slate-700 hover:bg-white hover:text-primary transition-all opacity-0 group-hover:opacity-100"
+                      >
+                         <Share2 size={16} />
+                      </button>
+                      <div className="absolute bottom-3 left-3">
+                         <span className="bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-tighter ring-1 ring-slate-100">
+                           {p.category}
+                         </span>
+                      </div>
                     </div>
-                    <div className="p-6 space-y-4">
-                      <h3 className="font-bold text-slate-800 text-lg group-hover:text-primary transition-colors">{p.name}</h3>
-                      <p className="text-sm text-slate-500 line-clamp-2">{p.description}</p>
+                    <div className="p-5 flex-1 flex flex-col justify-between">
+                      <div className="mb-4">
+                        <h3 className="font-bold text-slate-800 text-sm mb-1 group-hover:text-primary transition-colors">{p.name}</h3>
+                        <p className="text-xs text-slate-400 line-clamp-1 mb-2">{p.description}</p>
+                        <p className="text-primary font-black text-base">KES {p.price.toLocaleString()}</p>
+                      </div>
                       <button 
                         onClick={() => addToCart(p)}
                         className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center space-x-2 ${
                           cart.find(item => item.name === p.name)
                             ? 'bg-seagreen-100 text-primary-dark cursor-default'
-                            : 'bg-primary text-white hover:bg-primary-dark shadow-sm'
+                            : 'bg-primary text-white hover:bg-primary-dark shadow-lg shadow-seagreen-100'
                         }`}
                       >
                         {cart.find(item => item.name === p.name) ? (
                           <>
                             <CheckCircle2 size={16} />
-                            <span>In Cart</span>
+                            <span>Added</span>
                           </>
                         ) : (
                           <>
@@ -410,26 +476,27 @@ export default function App() {
             >
               <div className="grid lg:grid-cols-2 gap-16 items-center">
                 <div className="space-y-8">
-                  <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Digital & CBC Services</h2>
+                  <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Digital & CBC Professional Services</h2>
                   <div className="space-y-6">
                     {SERVICES.map((s, i) => (
-                      <div key={i} className="flex items-start space-x-4 p-6 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                      <div key={i} className="flex items-start space-x-4 p-6 bg-white rounded-3xl border border-slate-100 shadow-sm relative group overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-primary transform -translate-x-full group-hover:translate-x-0 transition-transform"></div>
                         <div className="mt-1">
                           <CheckCircle2 className="text-primary" size={24} />
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-bold text-lg text-slate-800">{s.name}</h3>
                           <p className="text-slate-500 mb-4">{s.description}</p>
                           <button 
                             onClick={() => addToCart(s)}
-                            className={`px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 ${
+                            className={`px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center space-x-2 border ${
                               cart.find(item => item.name === s.name)
-                                ? 'bg-seagreen-100 text-primary-dark cursor-default'
-                                : 'bg-primary text-white hover:bg-primary-dark'
+                                ? 'bg-seagreen-100 text-primary-dark border-seagreen-200 cursor-default'
+                                : 'bg-white text-primary border-primary hover:bg-primary hover:text-white'
                             }`}
                           >
                              {cart.find(item => item.name === s.name) ? <CheckCircle2 size={16} /> : <Plus size={16} />}
-                             <span>{cart.find(item => item.name === s.name) ? 'Service Selected' : 'Select Service'}</span>
+                             <span>{cart.find(item => item.name === s.name) ? 'Selected' : 'Enquire Now'}</span>
                           </button>
                         </div>
                       </div>
@@ -438,9 +505,9 @@ export default function App() {
                 </div>
                 <div>
                   <img 
-                    src="https://picsum.photos/seed/digital/800/800" 
+                    src="https://picsum.photos/seed/nuru-service/800/1000" 
                     alt="Digital Services" 
-                    className="w-full rounded-[2.5rem] shadow-2xl"
+                    className="w-full h-auto rounded-[2.5rem] shadow-2xl ring-1 ring-slate-100"
                     referrerPolicy="no-referrer"
                   />
                 </div>
