@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --color-primary: #2e8b57;
+  --color-primary-light: #3cb371;
+  --color-primary-dark: #20613d;
+  --color-seagreen-50: #f0fdf4;
+  --color-seagreen-100: #dcfce7;
+  --color-seagreen-200: #bbf7d0;
+  --color-seagreen-700: #15803d;
+}
+
+body {
+  @apply antialiased bg-slate-50 text-slate-900;
+}

@@ -1,0 +1,571 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Menu, 
+  X, 
+  ShoppingBag, 
+  Briefcase, 
+  Mail, 
+  Home as HomeIcon, 
+  Settings, 
+  Send, 
+  Trash2, 
+  LogOut, 
+  LogIn,
+  CheckCircle2,
+  Phone
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  auth, 
+  db, 
+  signInWithPopup, 
+  googleProvider, 
+  signOut, 
+  onAuthStateChanged,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  onSnapshot,
+  deleteDoc,
+  doc
+} from './lib/firebase';
+
+const View = {
+  HOME: 'home',
+  PRODUCTS: 'products',
+  SERVICES: 'services',
+  CONTACT: 'contact',
+  ADMIN: 'admin'
+};
+
+const PRODUCTS = [
+  { name: "Learning Tools", image: "https://picsum.photos/seed/tool/400/300", description: "Enhance learning with our tools." },
+  { name: "Awasi Boys School Logo", image: "https://picsum.photos/seed/awasi/400/300", description: "Logo for Awasi Boys School." },
+  { name: "Clock Branding", image: "https://picsum.photos/seed/clock/400/300", description: "Branded school clocks." },
+  { name: "Kairi Secondary School Logo", image: "https://picsum.photos/seed/kairi/400/300", description: "Logo for Kairi Secondary School." },
+  { name: "Poiywek Secondary School Logo", image: "https://picsum.photos/seed/poiywek/400/300", description: "Logo for Poiywek Secondary School." },
+  { name: "Achengo Mixed Secondary School Logo", image: "https://picsum.photos/seed/achengo/400/300", description: "Logo for Achengo Mixed Secondary School." },
+  { name: "Custom Badges", image: "https://picsum.photos/seed/badge/400/300", description: "Custom badges and key holders." },
+  { name: "Medals and Trophies", image: "https://picsum.photos/seed/medal/400/300", description: "Custom medals and trophies." },
+  { name: "Podiums", image: "https://picsum.photos/seed/podiums/400/300", description: "Podiums for school events." },
+  { name: "Labels and Signs", image: "https://picsum.photos/seed/labels/400/300", description: "Various labels and signs for schools." },
+  { name: "Stamp & Company Seal", image: "https://picsum.photos/seed/stamp/400/300", description: "Stamp and company seal." },
+  { name: "Plaques", image: "https://picsum.photos/seed/plaques/400/300", description: "Plaques for recognition." },
+];
+
+const SERVICES = [
+  { name: "Web Design", description: "Modern, responsive websites for schools and businesses." },
+  { name: "Learning Materials", description: "K-12 and CBC/CBE materials for Kenyan schools." },
+  { name: "Branding", description: "Logo design, merchandise branding, and corporate identity." },
+  { name: "Admin Materials", description: "Classwork registers, school stationeries, and admin tools." },
+];
+
+export default function App() {
+  const [currentView, setCurrentView] = useState(View.HOME);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [inquiries, setInquiries] = useState([]);
+  const [formStatus, setFormStatus] = useState('idle');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (usr) => {
+      setUser(usr);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user?.email === 'ibgroup.live@gmail.com') {
+      const q = query(collection(db, 'inquiries'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setInquiries(items);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  // SEO: JSON-LD injection
+  useEffect(() => {
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "Nuru Stationeries and Services",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Nairobi",
+        "addressCountry": "KE"
+      },
+      "url": "https://nuru-stationeries.com",
+      "telephone": "+254719301330",
+      "description": "Provider of school custom stationeries, digital services, branding, and K-12 learning materials for CBC in Kenya.",
+      "areaServed": "East Africa"
+    };
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.innerHTML = JSON.stringify(jsonLd);
+    document.head.appendChild(script);
+    return () => { document.head.removeChild(script); };
+  }, []);
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setFormStatus('submitting');
+    const formData = new FormData(e.currentTarget);
+    const path = 'inquiries';
+    try {
+      await addDoc(collection(db, path), {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        whatsapp: formData.get('whatsapp'),
+        subject: formData.get('subject'),
+        message: formData.get('message'),
+        createdAt: serverTimestamp(),
+      });
+      setFormStatus('success');
+      setTimeout(() => setFormStatus('idle'), 3000);
+      e.target.reset();
+    } catch (error) {
+      const errInfo = {
+        error: error instanceof Error ? error.message : String(error),
+        authInfo: {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          emailVerified: auth.currentUser?.emailVerified,
+        },
+        operationType: 'create',
+        path
+      };
+      console.error('Firestore Error: ', JSON.stringify(errInfo));
+      setFormStatus('idle');
+      throw new Error(JSON.stringify(errInfo));
+    }
+  };
+
+  const deleteInquiry = async (id) => {
+    if (id) await deleteDoc(doc(db, 'inquiries', id));
+  };
+
+  const NavLink = ({ view, label, icon: Icon }) => (
+    <button 
+      onClick={() => { setCurrentView(view); setIsMenuOpen(false); }}
+      className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all ${
+        currentView === view ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'
+      }`}
+    >
+      <Icon size={18} />
+      <span className="font-medium">{label}</span>
+    </button>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-seagreen-100">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-bottom border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setCurrentView(View.HOME)}>
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-seagreen-200">
+              N
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-lg font-bold tracking-tight text-slate-800 leading-none">NURU</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Stationeries & Services</p>
+            </div>
+          </div>
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center space-x-2">
+            <NavLink view={View.HOME} label="Home" icon={HomeIcon} />
+            <NavLink view={View.PRODUCTS} label="Products" icon={ShoppingBag} />
+            <NavLink view={View.SERVICES} label="Services" icon={Briefcase} />
+            <NavLink view={View.CONTACT} label="Contact" icon={Mail} />
+            {user?.email === 'ibgroup.live@gmail.com' && (
+              <NavLink view={View.ADMIN} label="Admin" icon={Settings} />
+            )}
+          </nav>
+
+          {/* Mobile Menu Toggle */}
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 text-slate-600 border border-slate-200 rounded-lg">
+            {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        {/* Mobile Nav Drawer */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="md:hidden bg-white border-b border-slate-200 absolute w-full px-4 py-4 space-y-2 shadow-xl"
+            >
+              <NavLink view={View.HOME} label="Home" icon={HomeIcon} />
+              <NavLink view={View.PRODUCTS} label="Products" icon={ShoppingBag} />
+              <NavLink view={View.SERVICES} label="Services" icon={Briefcase} />
+              <NavLink view={View.CONTACT} label="Contact" icon={Mail} />
+              {user?.email === 'ibgroup.live@gmail.com' && (
+                <NavLink view={View.ADMIN} label="Admin" icon={Settings} />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <AnimatePresence mode="wait">
+          {currentView === View.HOME && (
+            <motion.section 
+              key="home"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-16"
+            >
+              {/* Hero */}
+              <div className="grid lg:grid-cols-2 gap-12 items-center">
+                <div className="space-y-8">
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 bg-seagreen-50 text-seagreen-700 rounded-full text-xs font-bold uppercase tracking-wider border border-seagreen-100">
+                    <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                    <span>Serving East Africa</span>
+                  </div>
+                  <h2 className="text-5xl md:text-7xl font-extrabold leading-[1.1] tracking-tight text-slate-900">
+                    Excellence in <span className="text-primary italic">Stationery</span> & Digital Services.
+                  </h2>
+                  <p className="text-lg text-slate-600 max-w-lg leading-relaxed">
+                    Nuru simplifies school management and learning with custom stationeries, CBC materials, and professional digital branding solutions.
+                  </p>
+                  <div className="flex flex-wrap gap-4">
+                    <button 
+                      onClick={() => setCurrentView(View.PRODUCTS)}
+                      className="px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-seagreen-200 hover:bg-primary-dark hover:shadow-xl transition-all"
+                    >
+                      Browse Products
+                    </button>
+                    <a 
+                      href="https://wa.me/254719301330"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-8 py-4 bg-white border border-slate-200 text-slate-800 font-bold rounded-2xl hover:bg-slate-50 transition-all flex items-center space-x-2"
+                    >
+                      <Phone size={18} />
+                      <span>WhatsApp Us</span>
+                    </a>
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute -inset-4 bg-seagreen-100 rounded-[3rem] blur-2xl opacity-50 -z-10"></div>
+                  <img 
+                    src="https://picsum.photos/seed/nairobi/800/600" 
+                    alt="Nuru Stationeries" 
+                    className="w-full h-[400px] object-cover rounded-[2.5rem] shadow-2xl border-4 border-white"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Features */}
+              <div className="grid md:grid-cols-3 gap-8">
+                {SERVICES.slice(0, 3).map((s, i) => (
+                  <div key={i} className="p-8 bg-white border border-slate-100 rounded-3xl shadow-sm hover:border-seagreen-200 transition-all group">
+                    <div className="w-12 h-12 bg-seagreen-50 text-primary rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all">
+                      {i === 0 ? <ShoppingBag size={24} /> : i === 1 ? <Briefcase size={24} /> : <Settings size={24} />}
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">{s.name}</h3>
+                    <p className="text-slate-500 leading-relaxed">{s.description}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+          )}
+
+          {currentView === View.PRODUCTS && (
+            <motion.section 
+              key="products"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-12"
+            >
+              <div className="text-center max-w-2xl mx-auto space-y-4">
+                <h2 className="text-4xl font-black text-slate-900 tracking-tight">Our Product Catalog</h2>
+                <p className="text-slate-500">Premium custom branding and stationery solutions tailored for educational institutions.</p>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {PRODUCTS.map((p, i) => (
+                  <div key={i} className="bg-white rounded-3xl border border-slate-100 overflow-hidden group hover:shadow-2xl hover:shadow-seagreen-100 transition-all">
+                    <div className="aspect-[4/3] overflow-hidden">
+                      <img 
+                        src={p.image} 
+                        alt={p.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="p-6 space-y-2">
+                      <h3 className="font-bold text-slate-800 text-lg group-hover:text-primary transition-colors">{p.name}</h3>
+                      <p className="text-sm text-slate-500 line-clamp-2">{p.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+          )}
+
+          {currentView === View.SERVICES && (
+            <motion.section 
+              key="services"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-16"
+            >
+              <div className="grid lg:grid-cols-2 gap-16 items-center">
+                <div className="space-y-8">
+                  <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Digital & CBC Services</h2>
+                  <div className="space-y-6">
+                    {SERVICES.map((s, i) => (
+                      <div key={i} className="flex items-start space-x-4 p-6 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                        <div className="mt-1">
+                          <CheckCircle2 className="text-primary" size={24} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-slate-800">{s.name}</h3>
+                          <p className="text-slate-500">{s.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <img 
+                    src="https://picsum.photos/seed/digital/800/800" 
+                    alt="Digital Services" 
+                    className="w-full rounded-[2.5rem] shadow-2xl"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </div>
+            </motion.section>
+          )}
+
+          {currentView === View.CONTACT && (
+            <motion.section 
+              key="contact"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="max-w-4xl mx-auto"
+            >
+              <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden grid md:grid-cols-2">
+                <div className="bg-primary p-12 text-white flex flex-col justify-between">
+                  <div className="space-y-6">
+                    <h2 className="text-4xl font-bold font-serif italic">Get in Touch</h2>
+                    <p className="text-seagreen-50 text-lg">We are based in Nairobi but supply throughout East Africa. Reach out for a custom quote.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-primary-dark rounded-xl flex items-center justify-center">
+                        <Phone size={20} />
+                      </div>
+                      <span className="font-medium">+254 719 301330</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-primary-dark rounded-xl flex items-center justify-center">
+                        <Mail size={20} />
+                      </div>
+                      <span className="font-medium">nuru.services@example.com</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-12">
+                  <form onSubmit={handleContactSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Full Name</label>
+                      <input name="name" required placeholder="John Doe" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Email</label>
+                        <input name="email" type="email" placeholder="john@example.com" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">WhatsApp</label>
+                        <input name="whatsapp" placeholder="+254..." className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Subject</label>
+                      <select name="subject" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all">
+                        <option>General Inquiry</option>
+                        <option>Product Order</option>
+                        <option>Web Design Service</option>
+                        <option>CBC Materials</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Message</label>
+                      <textarea name="message" required rows={4} placeholder="How can we help you?" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all resize-none"></textarea>
+                    </div>
+                    <button 
+                      type="submit" 
+                      disabled={formStatus === 'submitting'}
+                      className="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all flex items-center justify-center space-x-2 shadow-lg shadow-seagreen-100"
+                    >
+                      {formStatus === 'submitting' ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      ) : formStatus === 'success' ? (
+                        <>
+                          <CheckCircle2 size={20} />
+                          <span>Sent Successfully!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send size={20} />
+                          <span>Send Message</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </motion.section>
+          )}
+
+          {currentView === View.ADMIN && (
+            <motion.section 
+              key="admin"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-8"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-black text-slate-900 uppercase italic">Admin Dashboard</h2>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-slate-500">{user?.email}</span>
+                  <button onClick={() => signOut(auth)} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                    <LogOut size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {!user ? (
+                <div className="bg-white p-12 rounded-[2.5rem] border border-slate-100 text-center space-y-6">
+                  <Settings className="mx-auto text-primary-light" size={64} />
+                  <h3 className="text-2xl font-bold">Admin Restricted Area</h3>
+                  <p className="text-slate-500">Please sign in with the authorized administrator account.</p>
+                  <button 
+                    onClick={() => signInWithPopup(auth, googleProvider)}
+                    className="px-8 py-4 bg-primary text-white font-bold rounded-2xl flex items-center space-x-2 mx-auto"
+                  >
+                    <LogIn size={20} />
+                    <span>Sign In as Admin</span>
+                  </button>
+                </div>
+              ) : user.email !== 'ibgroup.live@gmail.com' ? (
+                <div className="bg-red-50 p-12 rounded-[2.5rem] border border-red-100 text-center space-y-4">
+                  <X className="mx-auto text-red-200" size={64} />
+                  <h3 className="text-2xl font-bold text-red-800">Unauthorized</h3>
+                  <p className="text-red-600">This account does not have administrator privileges.</p>
+                  <button onClick={() => signOut(auth)} className="text-red-600 underline font-medium">Switch Account</button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 border-b border-slate-100">
+                        <tr>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Name</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Contact</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Subject</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Message</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {inquiries.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">No inquiries found yet.</td>
+                          </tr>
+                        ) : inquiries.map((inq) => (
+                          <tr key={inq.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4 text-xs font-mono text-slate-500 whitespace-nowrap">
+                              {inq.createdAt?.toDate?.() ? inq.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                            </td>
+                            <td className="px-6 py-4 font-bold text-slate-700">{inq.name}</td>
+                            <td className="px-6 py-4 text-sm text-slate-500">
+                              <p>{inq.email}</p>
+                              <p className="text-primary font-medium">{inq.whatsapp}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-3 py-1 bg-seagreen-50 text-primary rounded-full text-xs font-bold">{inq.subject}</span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-500 max-w-xs">{inq.message}</td>
+                            <td className="px-6 py-4">
+                              <button 
+                                onClick={() => inq.id && deleteInquiry(inq.id)}
+                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </motion.section>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-slate-200 mt-24">
+        <div className="max-w-7xl mx-auto px-4 py-12 grid md:grid-cols-2 lg:grid-cols-4 gap-12">
+          <div className="space-y-4">
+            <h2 className="text-xl font-black italic tracking-tighter">NURU<span className="text-primary">.</span></h2>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              Kenya's premier school stationery and digital service provider. Empowering schools through design and supply excellence.
+            </p>
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Quick Navigation</h3>
+            <ul className="space-y-2 text-sm font-medium text-slate-600">
+              <li className="cursor-pointer hover:text-primary" onClick={() => setCurrentView(View.PRODUCTS)}>Products</li>
+              <li className="cursor-pointer hover:text-primary" onClick={() => setCurrentView(View.SERVICES)}>Services</li>
+              <li className="cursor-pointer hover:text-primary" onClick={() => setCurrentView(View.CONTACT)}>Contact</li>
+            </ul>
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Contact Info</h3>
+            <ul className="space-y-2 text-sm font-medium text-slate-600">
+              <li>Nairobi, Kenya</li>
+              <li>+254 719 301330</li>
+              <li className="text-primary">Available across East Africa</li>
+            </ul>
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Connect</h3>
+            <div className="flex space-x-3">
+              <a href="https://wa.me/254719301330" className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-all">
+                <Phone size={18} />
+              </a>
+              <a href="mailto:nuru.services@example.com" className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-all">
+                <Mail size={18} />
+              </a>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 py-8 border-t border-slate-100 text-center">
+          <p className="text-xs text-slate-400 font-medium">© 2024 Nuru Stationeries and Services. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
