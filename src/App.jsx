@@ -140,23 +140,63 @@ export default function App() {
 
   // SEO: JSON-LD injection
   useEffect(() => {
-    const jsonLd = {
+    const businessSchema = {
       "@context": "https://schema.org",
       "@type": "LocalBusiness",
       "name": "Nuru Stationeries and Services",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Nairobi",
-        "addressCountry": "KE"
-      },
+      "image": "https://picsum.photos/seed/nairobi/800/600",
+      "@id": "https://nuru-stationeries.com",
       "url": "https://nuru-stationeries.com",
       "telephone": "+254719301330",
-      "description": "Provider of school custom stationeries, digital services, branding, and K-12 learning materials for CBC in Kenya.",
-      "areaServed": "East Africa"
+      "priceRange": "KES",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Nairobi CBD",
+        "addressLocality": "Nairobi",
+        "addressRegion": "Nairobi",
+        "postalCode": "00100",
+        "addressCountry": "KE"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": -1.286389,
+        "longitude": 36.817223
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        "opens": "08:00",
+        "closes": "18:00"
+      },
+      "sameAs": [
+        "https://wa.me/254719301330"
+      ]
     };
+
+    const productSchema = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "itemListElement": PRODUCTS.map((p, i) => ({
+        "@type": "ListItem",
+        "position": i + 1,
+        "item": {
+          "@type": "Product",
+          "name": p.name,
+          "image": p.image,
+          "description": p.description,
+          "offers": {
+            "@type": "Offer",
+            "price": p.price,
+            "priceCurrency": "KES",
+            "availability": "https://schema.org/InStock"
+          }
+        }
+      }))
+    };
+
     const script = document.createElement('script');
     script.type = 'application/ld+json';
-    script.innerHTML = JSON.stringify(jsonLd);
+    script.innerHTML = JSON.stringify([businessSchema, productSchema]);
     document.head.appendChild(script);
     return () => { document.head.removeChild(script); };
   }, []);
@@ -318,20 +358,20 @@ export default function App() {
               className="space-y-16"
             >
               {/* Hero */}
-              <div className="grid lg:grid-cols-2 gap-12 items-center">
-                <div className="space-y-6">
-                  <div className="inline-flex items-center space-x-2 px-3 py-1 bg-seagreen-50 text-seagreen-700 rounded-full text-xs font-bold uppercase tracking-wider border border-seagreen-100">
+              <div className="flex flex-col items-center text-center py-12">
+                <div className="space-y-6 max-w-3xl">
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 bg-seagreen-50 text-seagreen-700 rounded-full text-xs font-bold uppercase tracking-wider border border-seagreen-100 mx-auto">
                     <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
                     <span>Kenya's Top School Supplier</span>
                   </div>
-                  <h2 className="text-4xl md:text-5xl font-extrabold leading-tight tracking-tight text-slate-900">
+                  <h2 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight text-slate-900">
                     Your School's Future <br/>
                     <span className="text-primary italic">Starts with Better Design.</span>
                   </h2>
-                  <p className="text-base text-slate-500 max-w-lg leading-relaxed">
+                  <p className="text-base md:text-lg text-slate-500 max-w-xl mx-auto leading-relaxed">
                     Custom stationery solutions and digital branding for progressive educational institutions across East Africa.
                   </p>
-                  <div className="flex flex-wrap gap-4 pt-4">
+                  <div className="flex flex-wrap justify-center gap-4 pt-4">
                     <button 
                       onClick={() => setCurrentView(View.PRODUCTS)}
                       className="px-6 py-3.5 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-seagreen-200 hover:bg-primary-dark transition-all"
@@ -348,15 +388,6 @@ export default function App() {
                       <span>Request Quote</span>
                     </a>
                   </div>
-                </div>
-                <div className="relative">
-                  <div className="absolute -inset-6 bg-seagreen-100 rounded-[3rem] blur-3xl opacity-40 -z-10"></div>
-                  <img 
-                    src="https://picsum.photos/seed/k-12/800/600" 
-                    alt="Education Support" 
-                    className="w-full h-[380px] object-cover rounded-[2.5rem] shadow-2xl border-2 border-white ring-8 ring-slate-100/50"
-                    referrerPolicy="no-referrer"
-                  />
                 </div>
               </div>
 
