@@ -239,6 +239,30 @@ export default function App() {
     }
   };
 
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setFormStatus('submitting');
+    const formData = new FormData(e.currentTarget);
+    const path = 'inquiries';
+
+    try {
+      await addDoc(collection(db, path), {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        whatsapp: formData.get('whatsapp'),
+        subject: formData.get('subject'),
+        message: formData.get('message'),
+        createdAt: serverTimestamp(),
+      });
+      setFormStatus('success');
+      setTimeout(() => setFormStatus('idle'), 3000);
+      e.target.reset();
+    } catch (error) {
+      console.error('Contact Error:', error);
+      setFormStatus('idle');
+    }
+  };
+
   const deleteOrder = async (id) => {
     if (id) await deleteDoc(doc(db, 'orders', id));
   };
